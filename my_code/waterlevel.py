@@ -57,7 +57,7 @@ class WaterLevel:
             date_time_str = data[0]
             date_time_obj = datetime.datetime.strptime(date_time_str, '%Y-%m-%d %H:%M')
             #print(date_time_obj.timestamp())
-            epoch = date_time_obj.time()
+            epoch = date_time_obj.timestamp()
             readable = datetime.datetime.fromtimestamp(epoch).isoformat()
             print(readable)
             self.times.append(readable)
