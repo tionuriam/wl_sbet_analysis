@@ -6,10 +6,14 @@ import numpy as np
 import matplotlib.pyplot as plt
 import csv
 from xml.etree import ElementTree as ET
+import pandas as pd
+from scipy.signal import find_peaks
+import plotly.graph_objects as go
+import requests
 
 
 class WaterLevel:
-    """A Class for handling Water Level Data"""
+    """A Class for handling Water Level Data (xml version)"""
     
     ## Last Changes
 
@@ -31,6 +35,18 @@ class WaterLevel:
         self.sigma = list()
         self.date = list()
         #self.time = list()
+
+        #download paramters
+        self.begin_data = str() # yyMMDD HH:MM
+        self.end_date = str()
+        self.station = str()
+        self.product = str()
+        self.datum = str()
+        self.units = str()
+        self.time_zone = str()
+        self.application = str()
+        self.services = str()
+        self.format = str()
       
     def read_jhc_file(self, fullpath):
             # Check the File's existence
@@ -63,27 +79,91 @@ class WaterLevel:
         # accessing values in child directory (observations)
         for values in root.iter('wl'):
             self.date_time.append(values.attrib['t'])
+            #print(type(values.attrib['t']))
             self.waterlevel.append(float(values.attrib['v']))
             self.sigma.append(float(values.attrib['s']))
+
+        #time_only = []
+        for time in self.date_time:
+            #print(time[11:])
+            date_time_obj = datetime.datetime.strptime(time[11:],'%H:%M')
+            self.times.append(time[11:])
+            #time_only.append(date_time_obj.time())
+
+        # for times in self.date_time:
+        #     x = time.split()
+        print(self.times)
 
         print(self.date_time)
         print(self.waterlevel)
         print(self.sigma)
         #print(s)
 
+    def download_wl_file(self):
+        """reads user input and downloads the relevant water level file"""
+        #user data inputs
+        self.begin_date = "20130101 10:00"
+        self.end_date = "20130101 10:24"
+        self.station = "8454000"
+        self.product = "water_level"
+        self.datum = "mllw"
+        self.units = "metric"
+        self.time_zone = "gmt"
+        self.application = "web_services"
+        self.format = 'xml'
+
+        url_parameters = str("begin_date=" + self.begin_date + "&end_date=" + self.end_date + "&station=" + self.station + "&product=" + self.product + "&datum=" + self.datum + "&units=" + self.units + "&time_zone=" + self.time_zone + "&application=" + self.application + "&format=" + self.format)
+        url_api = "https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?"
+        url_download = url_api + url_parameters
+        result = requests.get(url_download)
+        print("file download from:" + url_download)
+        print("Following parameters were used: ")
+        print("begin_date:", self.begin_date)  # yyMMDD HH:MM
+        print("end_date:", self.end_date)
+        print("station:", self.station)
+        print("product:", self.product)
+        print("datum:", self.datum)
+        print("units:", self.units)
+        print("timezone:", self.time_zone)
+        print("application:", self.application)
+        print("format:", format)
+        print(result.text)
+        return print("done")
+
+
+
     def draw(self):
 
-        print("Drawing Water Level Data")
+        #find peaks of water levels
 
-        plt.figure(figsize=(10, 100))
+        time_series = list(zip(range(len(self.waterlevel)), self.waterlevel))
+        print("time series:", time_series)
 
-        plt.plot(self.date_time,self.waterlevel)
-        plt.title("Water Level Data")
-        plt.ylabel("Water Level in [m] above Chart Datum")
-        plt.xticks()
-        plt.xlabel("Time[UTC]")
 
-        plt.figure(figsize=(10, 100))
 
-        plt.gcf().autofmt_xdate()
-        plt.show()
+        # df = pd.to_datetime(self.date_time)
+        # date_time_str = '2018-06-16 00:06'
+        # date_time_obj = datetime.datetime.strptime(date_time_str,'%Y-%m-%d %H:%M')
+        # print(date_time_obj)
+        # print('Time:', date_time_obj.time())
+        #
+        # plt.figure(figsize=(10, 100))
+        #
+        # plt.plot(self.times, self.waterlevel)
+        # plt.title("Water Level Data")
+        # # Y axis
+        # plt.ylabel("Water Level in [m] above Chart Datum")
+        # #plt.yticks(np.arange())
+        #
+        # # #X axis
+        # # minimum = max(self.waterlevel)
+        # # print(minimum)
+        # frequency=100
+        # plt.xticks(self.times[::frequency])
+        # #
+        # plt.xlabel("Time[UTC]")
+        # #
+        # plt.figure(figsize=(10, 100))
+        # #
+        # plt.gcf().autofmt_xdate()
+        # plt.show()
