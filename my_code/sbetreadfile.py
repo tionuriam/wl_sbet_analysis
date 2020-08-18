@@ -4,12 +4,15 @@ from datetime import datetime, timezone
 from numpy import pi, cos, sin, log, exp
 import numpy as np
 import matplotlib.pyplot as plt
+import requests
+from my_code.waterlevel_xmlread import WaterLevel
 
 class sbet:
-    
+    """ Class to read sbet txt files"""
     
     def __init__(self):
         self.time_list = list()
+        #self.times_array = np.array([self.time_list])
         self.easting_list = list()
         self.northing_list = list()
         self.distance_list = list()
@@ -28,6 +31,10 @@ class sbet:
         self.roll_sd_list = list()
         self.pitch_sd_list = list()
         self.heading_sd_list = list()
+
+        #url paramters
+        self.start_date = str()
+        self.start_time = str()
         
         #self.sbet_list = list()
         
@@ -66,8 +73,20 @@ class sbet:
         for headers in sbet_list[24]:
             headers = headers.split()
             sbet_headers.append(headers)
-            
-             
+
+        # find mission start date and time and store as datetime variable. Information is taken from the
+        # the text file headers
+        for dates in sbet_list[15]:
+            splitlines = dates.split()
+            startdate = splitlines[3]
+            self.start_date = startdate
+
+        for times in sbet_list[16]:
+            splitlines = times.split()
+            starttime = splitlines[2]
+            self.start_time = starttime
+
+        #iterating through the data only and appending output into appropriate list
         for lines in sbet_list[28:]:
             for value in lines:
                 sbetvalues = value.split()
@@ -91,16 +110,17 @@ class sbet:
                 pitch_sd = sbetvalues[-2]
                 heading_sd = sbetvalues[-1]
                 
-                self.time_list.append(time)
-                self.distance_list.append(distance)
+                self.time_list.append(float(time))
+                #np.append(self.time_list.append(time))
+                self.distance_list.append(float(distance))
                 self.easting_list.append(easting)
                 self.northing_list.append(northing)
-                self.ellipsoid_height_list.append(ellipsoid_height)
+                self.ellipsoid_height_list.append(float(ellipsoid_height))
                 self.lat_list.append(latitude)
                 self.lon_list.append(longitude)
-                self.roll_list.append(roll)
-                self.pitch_list.append(pitch)
-                self.heading_list.append(heading)
+                self.roll_list.append(float(roll))
+                self.pitch_list.append(float(pitch))
+                self.heading_list.append(float(heading))
                 self.east_velocity_list.append(east_velocity)
                 self.north_velocity_list.append(north_velocity)
                 self.up_velocity_list.append(up_velocity)
@@ -110,9 +130,58 @@ class sbet:
                 self.roll_sd_list.append(roll_sd)
                 self.pitch_sd_list.append(pitch_sd)
                 self.heading_sd_list.append(heading_sd)
-                
-                
-        print (self.easting_list )
-              
 
-    
+        #remove duplicates in datasets
+        #waterlevel_dict = dict(self.time_list, self.waterlevel))
+        #print(waterlevel_dict)
+        #print(self.ellipsoid_height_list)
+                
+    def time_distance(self):
+        """handling time and distance variables"""
+
+        #total time vessel travelled
+        time_array = np.array([self.time_list])
+        time_cumsum = np.sum(np.diff(time_array))
+
+        #print(np.shape(time_cumsum))
+        print("Total time travelled(sec): ", time_cumsum)# adding the difference between each time interval in the dataset
+
+        # total distance vessel travelled
+        distance_travelled = (self.distance_list[-1])
+        print("Total distance travelled(m): ", distance_travelled)
+
+
+    def waterlevel(self):
+        """downloads relevant water level data based on station ID start and stop date in sbet file"""
+
+
+
+    def draw(self):
+
+        print("Drawing Motion Data")
+
+        plt.figure(figsize=(10, 20))
+        plt.title("Plot of Motion data")
+        ax1 = plt.subplot(4, 1, 1)
+        plt.plot(self.ellipsoid_height_list)
+        plt.ylabel("Ellipsoidal height [m]")
+        #
+        ax2 = plt.subplot(4, 1, 2, sharex=ax1)
+        plt.plot(self.pitch_list)
+        plt.ylabel("pitch[m]")
+        #
+        ax3 = plt.subplot(4, 1, 3, sharex=ax1)
+        plt.plot(self.roll_list)
+        plt.ylabel("Roll[deg])")
+        #
+        ax4 = plt.subplot(4, 1, 4, sharex=ax1)
+        plt.plot(self.heading_list)
+        plt.ylabel("Heading[deg]")
+        plt.xlabel("Time[UTC]")
+        #
+        plt.setp(ax1.get_xticklabels(), visible=False)
+        plt.setp(ax2.get_xticklabels(), visible=False)
+        plt.setp(ax3.get_xticklabels(), visible=False)
+
+        plt.gcf().autofmt_xdate()
+        plt.show()
