@@ -14,7 +14,7 @@ class sbet:
     
     def __init__(self):
         self.time_list = list()
-        #self.times_array = np.array([self.time_list])
+        self.times = list()
         self.easting_list = list()
         self.northing_list = list()
         self.distance_list = list()
@@ -76,39 +76,6 @@ class sbet:
             headers = headers.split()
             sbet_headers.append(headers)
 
-        # find mission start date and time and store as datetime variable. Information is taken from the
-        start_date = str()
-        start_time = str()
-        for dates in sbet_list[15]:
-            splitlines = dates.split()
-            start_date = splitlines[3]
-        for times in sbet_list[16]:
-            splitlines = times.split()
-            start_time = splitlines[2]
-
-        self.start_date_time_str = start_date + " " + start_time
-        print(self.start_date_time_str)
-        current_date = datetime.strptime(self.start_date_time_str, '%Y-%m-%d %H:%M:%S')
-        time = current_date.time()
-        hr = time.hour
-        min = time.minute
-        sec= time.second
-
-        #Find date of start of week day from when the data was collected
-        n = current_date.weekday() # int value of day of week
-        count = 0
-        while n > 0:
-            n = n - 1
-            count = count + 1
-        else:
-            day_of_week = (current_date - timedelta(days=count)).weekday()
-            #hours_of_week = current_date - timedelta(hours = )
-            new_date = current_date - timedelta(days=count,hours=hr,minutes=min,seconds=sec)
-            print(calendar.day_name[day_of_week])
-            print(new_date)
-
-        
-
 
 
         #iterating through the data only and appending output into appropriate list
@@ -156,10 +123,55 @@ class sbet:
                 self.pitch_sd_list.append(pitch_sd)
                 self.heading_sd_list.append(heading_sd)
 
-        #print(self.start_date)
-        #waterlevel_dict = dict(self.time_list, self.waterlevel))
-        #print(waterlevel_dict)
-        #print(self.ellipsoid_height_list)
+
+        # find mission start date and time and store as datetime variable. Information is taken from the sbet file
+        start_date = str()
+        start_time = str()
+        for dates in sbet_list[15]:
+            splitlines = dates.split()
+            start_date = splitlines[3]
+        for times in sbet_list[16]:
+            splitlines = times.split()
+            start_time = splitlines[2]
+
+        self.start_date_time_str = start_date + " " + start_time
+        print(self.start_date_time_str)
+        current_date = datetime.strptime(self.start_date_time_str, '%Y-%m-%d %H:%M:%S')
+        print("Date and time of Start of Survey:", current_date)
+        current_day = current_date.weekday()
+        #print("Day of survey:", calendar.day_name[current_day])
+
+        # breaking down hours o current day(time) of day to hr, min, sec
+        time = current_date.time()
+        hr = time.hour
+        min = time.minute
+        sec = time.second
+
+        # Find date of start of week day (for monday of that week) from when the data was collected
+        n = current_date.weekday()  # int value of day of week
+        count = 0
+        while n > 0:
+            n = n - 1
+            count = count + 1
+        else:
+            day_of_week = (current_date - timedelta(days=count)).weekday()
+            # hours_of_week = current_date - timedelta(hours = )
+            new_date = current_date - timedelta(days=count, hours=hr, minutes=min, seconds=sec)
+            #print("Start of week day:", calendar.day_name[day_of_week])
+            #print("Start of week date:", new_date)
+
+        #find end date and time of survey
+        end_date = new_date + timedelta(seconds=self.time_list[-1])
+        print("Date and Time of End of Survey:", end_date)
+
+        #Convert week of day seconds to date and time in survey file
+        for secs in self.time_list:
+            date_time = new_date + timedelta(seconds=secs)
+            self.times.append(date_time)
+            #print(type(date_time))
+
+
+
                 
     def time_distance(self):
         """handling time and distance variables"""
@@ -178,6 +190,9 @@ class sbet:
 
     def waterlevel(self):
         """downloads relevant water level data based on station ID start and stop date in sbet file"""
+        from my_code.waterlevel import WaterLevel
+        water_levels = WaterLevel()
+
 
 
 
@@ -188,19 +203,19 @@ class sbet:
         plt.figure(figsize=(10, 20))
         plt.title("Plot of Motion data")
         ax1 = plt.subplot(4, 1, 1)
-        plt.plot(self.ellipsoid_height_list)
+        plt.plot(self.times,self.ellipsoid_height_list)
         plt.ylabel("Ellipsoidal height [m]")
         #
         ax2 = plt.subplot(4, 1, 2, sharex=ax1)
-        plt.plot(self.pitch_list)
+        plt.plot(self.times,self.pitch_list)
         plt.ylabel("pitch[m]")
         #
         ax3 = plt.subplot(4, 1, 3, sharex=ax1)
-        plt.plot(self.roll_list)
+        plt.plot(self.times,self.roll_list)
         plt.ylabel("Roll[deg])")
         #
         ax4 = plt.subplot(4, 1, 4, sharex=ax1)
-        plt.plot(self.heading_list)
+        plt.plot(self.times,self.heading_list)
         plt.ylabel("Heading[deg]")
         plt.xlabel("Time[UTC]")
         #
