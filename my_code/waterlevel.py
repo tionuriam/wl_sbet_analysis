@@ -4,6 +4,7 @@ from datetime import timezone, time
 from numpy import pi, cos, sin, log, exp
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib import dates
 import csv
 from xml.etree import ElementTree as ET
 import pandas as pd
@@ -35,11 +36,12 @@ class WaterLevel:
         # self.metadata["time_base"] ="UTC"
         # self.metadata["location_name"] = "Unknown"
 
-        # download paramters
+        # download parameters
         # user inputs; enter the required parameters
-        self.begin_date = "20130101 10:00"  # format YYMMDD HHMM
-        self.end_date = "20130101 10:24"  # format YYMMDD HHMM
-        self.station = "8454000"  # enter station ID
+        self.filename = "wl_20180614_sh"
+        self.begin_date = "20180614 19:00"  # format YYMMDD HHMM
+        self.end_date = "20180621 19:00"  # format YYMMDD HHMM
+        self.station = "8423898"  # enter station ID
         self.product = "water_level"  # enter water_level
         self.datum = "mllw"  # enter datum type
         self.units = "metric"  # enter required units
@@ -52,14 +54,15 @@ class WaterLevel:
         if os.path.exists(fullpath):
             self.metadata["Source File"] = fullpath
             print('Opening water level data file:' + fullpath)
+
+            # identify file extension
+            file_name, file_extension = os.path.splitext(fullpath)
+            # print("File name: %s" %file_name)
+            print("File extension:", file_extension)
+
         else:  # Raise a meaningful error
             raise RuntimeError('Unable to locate the input file' + fullpath)
 
-        # identify file extension
-
-        file_name, file_extension = os.path.splitext(fullpath)
-        # print("File name: %s" %file_name)
-        print("File extension:", file_extension)
 
         # open csv file
         with open(fullpath, 'r') as file:
@@ -72,17 +75,13 @@ class WaterLevel:
         for data in self.wl_data[1:]:
             # data.split()
             date_time_str = data[0]
+            #print(date_time_str)
             date_time_obj = datetime.datetime.strptime(date_time_str, '%Y-%m-%d %H:%M')
-            # print(date_time_obj.timestamp())
-            epoch = date_time_obj.timestamp()
-            readable = datetime.datetime.fromtimestamp(epoch).isoformat()
-            print(readable)
-            self.times.append(readable)
-            # print(data[0])
+            self.times.append(date_time_obj)
             self.waterlevel.append(float(data[1]))
             self.sigma.append(float(data[2]))
 
-        print(self.times)
+
 
     def read_xml_file(self, fullpath):
         # Check the File's existence
@@ -112,16 +111,9 @@ class WaterLevel:
 
         # time_only = []
         for time in self.date_time:
-            # print(time[11:])
-            date_time_obj = datetime.datetime.strptime(time[11:], '%H:%M')
-            self.times.append(time[11:])
-            # time_only.append(date_time_obj.time())
-
-        # print(self.times)
-        #
-        # print(self.date_time)
-        # print(self.waterlevel)
-        # print(self.sigma)
+            #print(time)
+            date_time_obj = datetime.datetime.strptime(time,'%Y-%m-%d %H:%M')
+            self.times.append(date_time_obj)
 
     def download_wl_file(self):
         """reads user input and downloads the relevant water level file that will be downloaded from internet"""
@@ -144,51 +136,30 @@ class WaterLevel:
         print("timezone:", self.time_zone)
         print("application:", self.application)
         print("format:", self.format)
-        print("************************************************")
-
         # print output
-        print(result.text)
+        #print(result.text)
 
         # export output as xml file intow file directory
         # enter file output file name,format and destination folder
-        filename = "20130101_wl_data"
+        filename = self.filename
         fileformat = str('.' + self.format)  # takes the format of what you entered earlier
         abs_path = os.path.abspath(os.path.curdir) + "/Data/"
         with open(abs_path + filename + fileformat, 'wb') as file:
             file.write(result.content)
 
-        return print("file saved in:" + abs_path + filename + fileformat)
+        return print("file saved in " + abs_path + filename + fileformat)
 
     def draw(self):
 
-        # find peaks of water levels
+        #xaxis = dates.date2num(self.times[0])
 
-        time_series = list(zip(range(len(self.waterlevel)), self.waterlevel))
-        print("time series:", time_series)
+        plt.plot(self.times, self.waterlevel)
+        plt.title("Water Level Data")
+        plt.ylabel("Water Level in [m] above Chart Datum")
+        plt.xticks()
+        plt.xlabel("Time[UTC]")
 
-        # df = pd.to_datetime(self.date_time)
-        # date_time_str = '2018-06-16 00:06'
-        # date_time_obj = datetime.datetime.strptime(date_time_str,'%Y-%m-%d %H:%M')
-        # print(date_time_obj)
-        # print('Time:', date_time_obj.time())
-        #
-        # plt.figure(figsize=(10, 100))
-        #
-        # plt.plot(self.times, self.waterlevel)
-        # plt.title("Water Level Data")
-        # # Y axis
-        # plt.ylabel("Water Level in [m] above Chart Datum")
-        # #plt.yticks(np.arange())
-        #
-        # # #X axis
-        # # minimum = max(self.waterlevel)
-        # # print(minimum)
-        # frequency=100
-        # plt.xticks(self.times[::frequency])
-        # #
-        # plt.xlabel("Time[UTC]")
-        # #
-        # plt.figure(figsize=(10, 100))
-        # #
-        # plt.gcf().autofmt_xdate()
-        # plt.show()
+        plt.figure(figsize=(10, 10))
+
+        plt.gcf().autofmt_xdate()
+        plt.show()
