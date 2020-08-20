@@ -1,9 +1,11 @@
 
 import os
 from datetime import datetime, timezone
+import calendar
 from numpy import pi, cos, sin, log, exp
 import numpy as np
 import matplotlib.pyplot as plt
+from datetime import timedelta
 import requests
 from my_code.waterlevel_xmlread import WaterLevel
 
@@ -33,8 +35,8 @@ class sbet:
         self.heading_sd_list = list()
 
         #url paramters
-        self.start_date = str()
-        self.start_time = str()
+        self.start_date_time_str = str()
+
         
         #self.sbet_list = list()
         
@@ -75,16 +77,39 @@ class sbet:
             sbet_headers.append(headers)
 
         # find mission start date and time and store as datetime variable. Information is taken from the
-        # the text file headers
+        start_date = str()
+        start_time = str()
         for dates in sbet_list[15]:
             splitlines = dates.split()
-            startdate = splitlines[3]
-            self.start_date = startdate
-
+            start_date = splitlines[3]
         for times in sbet_list[16]:
             splitlines = times.split()
-            starttime = splitlines[2]
-            self.start_time = starttime
+            start_time = splitlines[2]
+
+        self.start_date_time_str = start_date + " " + start_time
+        print(self.start_date_time_str)
+        current_date = datetime.strptime(self.start_date_time_str, '%Y-%m-%d %H:%M:%S')
+        time = current_date.time()
+        hr = time.hour
+        min = time.minute
+        sec= time.second
+
+        #Find date of start of week day from when the data was collected
+        n = current_date.weekday() # int value of day of week
+        count = 0
+        while n > 0:
+            n = n - 1
+            count = count + 1
+        else:
+            day_of_week = (current_date - timedelta(days=count)).weekday()
+            #hours_of_week = current_date - timedelta(hours = )
+            new_date = current_date - timedelta(days=count,hours=hr,minutes=min,seconds=sec)
+            print(calendar.day_name[day_of_week])
+            print(new_date)
+
+        
+
+
 
         #iterating through the data only and appending output into appropriate list
         for lines in sbet_list[28:]:
@@ -131,7 +156,7 @@ class sbet:
                 self.pitch_sd_list.append(pitch_sd)
                 self.heading_sd_list.append(heading_sd)
 
-        #remove duplicates in datasets
+        #print(self.start_date)
         #waterlevel_dict = dict(self.time_list, self.waterlevel))
         #print(waterlevel_dict)
         #print(self.ellipsoid_height_list)
