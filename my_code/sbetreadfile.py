@@ -7,7 +7,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 from datetime import timedelta
 import requests
+from math import floor
 from my_code.waterlevel_xmlread import WaterLevel
+from xml.etree import ElementTree as ET
 
 class sbet:
     """ Class to read sbet txt files"""
@@ -35,11 +37,27 @@ class sbet:
         self.heading_sd_list = list()
 
         #url paramters
-        self.start_date_time_str = str()
+        # self.start_date_time_str = str()
+        # self.end_date_time_str = str()
 
-        
+        self.format_start_time = str()
+        self.format_start_date = str()
+        self.format_end_time = str()
+        self.format_end_date = str()
+
+        # user inputs; enter the required parameters
+        self.filename = "wl_20180614_testing"
+        self.begin_date = str()  # format YYMMDD HHMM
+        self.end_date = str()  # format YYMMDD HHM
+        self.station = "8423898"  # enter station ID
+        self.product = "water_level"  # enter water_level
+        self.datum = "mllw"  # enter datum type
+        self.units = "metric"  # enter required units
+        self.time_zone = "gmt"  # enter timezone
+        self.application = "web_services"  # enter web application
+        self.format = 'xml'  # enter format of data output e.g. xml, csv or json
+
         #self.sbet_list = list()
-        
         self.fullpath = str()
         self.metadata = dict()
         self.metadata["units"] = "m"
@@ -135,41 +153,52 @@ class sbet:
             start_time = splitlines[2]
 
         self.start_date_time_str = start_date + " " + start_time
-        print(self.start_date_time_str)
-        current_date = datetime.strptime(self.start_date_time_str, '%Y-%m-%d %H:%M:%S')
-        print("Date and time of Start of Survey:", current_date)
-        current_day = current_date.weekday()
-        #print("Day of survey:", calendar.day_name[current_day])
+        #print(self.start_date_time_str)
+        mission_start_date_time = datetime.strptime(self.start_date_time_str, '%Y-%m-%d %H:%M:%S')
 
-        # breaking down hours o current day(time) of day to hr, min, sec
-        time = current_date.time()
+        mission_start_day = mission_start_date_time.weekday()
+        #print("Day of survey:", calendar.day_name[current_day])
+        print("Mission Start:", mission_start_date_time,calendar.day_name[mission_start_day])
+        # breaking down hours to current day(time) of day to hr, min, sec
+        time = mission_start_date_time.time() #extract time only from date and time
         hr = time.hour
         min = time.minute
         sec = time.second
 
         # Find date of start of week day (for monday of that week) from when the data was collected
-        n = current_date.weekday()  # int value of day of week
+        n = mission_start_date_time.weekday()  # int value of day of week
         count = 0
         while n > 0:
             n = n - 1
             count = count + 1
         else:
-            day_of_week = (current_date - timedelta(days=count)).weekday()
+            day_of_week = (mission_start_date_time - timedelta(days=count)).weekday()
             # hours_of_week = current_date - timedelta(hours = )
-            new_date = current_date - timedelta(days=count, hours=hr, minutes=min, seconds=sec)
-            #print("Start of week day:", calendar.day_name[day_of_week])
-            #print("Start of week date:", new_date)
+            start_of_week_date = mission_start_date_time - timedelta(days=count, hours=hr, minutes=min, seconds=sec)
+            #print("Start of week day date and time:", day_of_week, calendar.day_name[day_of_week])
 
-        #find end date and time of survey
-        end_date = new_date + timedelta(seconds=self.time_list[-1])
-        print("Date and Time of End of Survey:", end_date)
+        #Find end date and time of mission
+        mission_end_date_time = start_of_week_date + timedelta(seconds=self.time_list[-1])
+        end_day = mission_end_date_time.weekday()
+        print("Mission end:", mission_end_date_time, calendar.day_name[end_day])
+        #print(mission_end_date_time)
 
         #Convert week of day seconds to date and time in survey file
         for secs in self.time_list:
-            date_time = new_date + timedelta(seconds=secs)
+            date_time = start_of_week_date + timedelta(seconds=secs)
             self.times.append(date_time)
             #print(type(date_time))
 
+        # extracting start/end date and time to fit format for api request
+        date_mission_start = mission_start_date_time.date()
+        time_mission_start = mission_start_date_time.time()
+        self.format_start_time = time_mission_start.strftime('%H:%M')
+        self.format_start_date = date_mission_start.strftime('%Y%m%d')
+
+        date_mission_end = mission_end_date_time.date()
+        time_mission_end = mission_end_date_time.time()
+        self.format_end_time = time_mission_end.strftime('%H:%M')
+        self.format_end_date = date_mission_end.strftime('%Y%m%d')
 
 
                 
@@ -194,12 +223,46 @@ class sbet:
         water_levels = WaterLevel()
 
 
+    def extract_wl_data(self,fullpath):
+        """download from internet relevant tide files based on mission start and end dates"""
+        #Take mission start and mission end dates
+        self.begin_date = self.format_start_date + " " + self.format_start_time
+        self.end_date = self.format_end_date + " " + self.format_end_time
 
+        #combine parameters and send a request to download data from website
+        url_parameters = str("begin_date=" + self.begin_date + "&end_date=" + self.end_date + "&station=" + self.station + "&product=" + self.product + "&datum=" + self.datum + "&units=" + self.units + "&time_zone=" + self.time_zone + "&application=" + self.application + "&format=" + self.format)
+        url_api = "https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?"
+        url_download = url_api + url_parameters
+        result = requests.get(url_download)
+        # #
+        # # # Parameters will be printed out
+        print("Water level data extracted from " + url_download)
+        print("Water level date/time period is from " + self.format_start_date + " " + self.format_start_time + " to " + self.format_end_date + " " + self.format_end_time)
+        # print("Following parameters were used: ")
+        # print("begin_date:", self.begin_date)  # yyMMDD HH:MM
+        # print("end_date:", self.end_date)
+        # print("station:", self.station)
+        # print("product:", self.product)
+        # print("datum:", self.datum)
+        # print("units:", self.units)
+        # print("timezone:", self.time_zone)
+        # print("application:", self.application)
+        # print("format:", self.format)
+
+        # export output as xml or csv file into file directory
+        # enter file output file name,format and destination folder
+        # print(fullpath)
+        filename = self.filename
+        fileformat = str('.' + self.format)  # takes the format of what you entered earlier
+        # abs_path = fullpath " # folder directory of where the data will be stored
+        with open(fullpath + filename + fileformat, 'wb') as file:
+            file.write(result.content)
+
+        return print("Water Level data file has been downloaded to " + fullpath + filename + fileformat)
 
     def draw(self):
 
         print("Drawing Motion Data")
-
         plt.figure(figsize=(10, 20))
         plt.title("Plot of Motion data")
         ax1 = plt.subplot(4, 1, 1)
@@ -212,7 +275,7 @@ class sbet:
         #
         ax3 = plt.subplot(4, 1, 3, sharex=ax1)
         plt.plot(self.times,self.roll_list)
-        plt.ylabel("Roll[deg])")
+        plt.ylabel("Roll[deg]")
         #
         ax4 = plt.subplot(4, 1, 4, sharex=ax1)
         plt.plot(self.times,self.heading_list)
