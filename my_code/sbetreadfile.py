@@ -1,4 +1,3 @@
-
 import os
 from datetime import datetime, timezone
 import calendar
@@ -39,14 +38,13 @@ class sbet:
         #url paramters
         # self.start_date_time_str = str()
         # self.end_date_time_str = str()
-
         self.format_start_time = str()
         self.format_start_date = str()
         self.format_end_time = str()
         self.format_end_date = str()
 
         # user inputs; enter the required parameters
-        self.filename = "wl_20180614_testing"
+        self.filename = "wl_20180614_22August"
         self.begin_date = str()  # format YYMMDD HHMM
         self.end_date = str()  # format YYMMDD HHM
         self.station = "8423898"  # enter station ID
@@ -55,7 +53,7 @@ class sbet:
         self.units = "metric"  # enter required units
         self.time_zone = "gmt"  # enter timezone
         self.application = "web_services"  # enter web application
-        self.format = 'xml'  # enter format of data output e.g. xml, csv or json
+        self.format = 'csv'  # enter format of data output e.g. xml, csv or json
 
         #self.sbet_list = list()
         self.fullpath = str()
@@ -165,7 +163,7 @@ class sbet:
         min = time.minute
         sec = time.second
 
-        # Find date of start of week day (for monday of that week) from when the data was collected
+        # Find date of start of week day (Sunday midnight of that week) from when the data was collected
         n = mission_start_date_time.weekday()  # int value of day of week
         count = 0
         while n > 0:
@@ -173,23 +171,27 @@ class sbet:
             count = count + 1
         else:
             day_of_week = (mission_start_date_time - timedelta(days=count)).weekday()
-            # hours_of_week = current_date - timedelta(hours = )
             start_of_week_date = mission_start_date_time - timedelta(days=count, hours=hr, minutes=min, seconds=sec)
             #print("Start of week day date and time:", day_of_week, calendar.day_name[day_of_week])
 
         #Find end date and time of mission
-        mission_end_date_time = start_of_week_date + timedelta(seconds=self.time_list[-1])
+        mission_end_date_time = start_of_week_date + timedelta(seconds=self.time_list[-1]) - timedelta(days=1) #because in counting number of days, Monday is also included (Monday = 1 day, Tue = 1 day etc.)
         end_day = mission_end_date_time.weekday()
         print("Mission end:", mission_end_date_time, calendar.day_name[end_day])
-        #print(mission_end_date_time)
+
 
         #Convert week of day seconds to date and time in survey file
         for secs in self.time_list:
-            date_time = start_of_week_date + timedelta(seconds=secs)
-            self.times.append(date_time)
-            #print(type(date_time))
 
-        # extracting start/end date and time to fit format for api request
+            conversion = start_of_week_date + timedelta(seconds=secs) - timedelta(days=1) #subtracting a day, because in counting number of days, Monday is also included (Monday = 1 day, Tue = 1 day etc.)
+            #print(date_time)
+            date_time_format = conversion.strftime('%Y-%m-%d %H:%M:%S')
+            date_time_format_object = datetime.strptime(date_time_format,'%Y-%m-%d %H:%M:%S')
+            self.times.append(date_time_format_object)
+
+
+
+        # changing start/end date and time format for api request
         date_mission_start = mission_start_date_time.date()
         time_mission_start = mission_start_date_time.time()
         self.format_start_time = time_mission_start.strftime('%H:%M')
@@ -200,27 +202,27 @@ class sbet:
         self.format_end_time = time_mission_end.strftime('%H:%M')
         self.format_end_date = date_mission_end.strftime('%Y%m%d')
 
-
+       # print("time:", self.times[0:10])
                 
-    def time_distance(self):
-        """handling time and distance variables"""
+    # def time_distance(self):
+    #     """handling time and distance variables"""
+    #
+    #     #total time vessel travelled
+    #     time_array = np.array([self.time_list])
+    #     time_cumsum = np.sum(np.diff(time_array))
+    #
+    #     #print(np.shape(time_cumsum))
+    #     print("Total time travelled(sec): ", time_cumsum)# adding the difference between each time interval in the dataset
+    #
+    #     # total distance vessel travelled
+    #     distance_travelled = (self.distance_list[-1])
+    #     print("Total distance travelled(m): ", distance_travelled)
 
-        #total time vessel travelled
-        time_array = np.array([self.time_list])
-        time_cumsum = np.sum(np.diff(time_array))
 
-        #print(np.shape(time_cumsum))
-        print("Total time travelled(sec): ", time_cumsum)# adding the difference between each time interval in the dataset
-
-        # total distance vessel travelled
-        distance_travelled = (self.distance_list[-1])
-        print("Total distance travelled(m): ", distance_travelled)
-
-
-    def waterlevel(self):
-        """downloads relevant water level data based on station ID start and stop date in sbet file"""
-        from my_code.waterlevel import WaterLevel
-        water_levels = WaterLevel()
+    # def waterlevel(self):
+    #     """downloads relevant water level data based on station ID start and stop date in sbet file"""
+    #     from my_code.waterlevel import WaterLevel
+    #     water_levels = WaterLevel()
 
 
     def extract_wl_data(self,fullpath):
@@ -258,7 +260,7 @@ class sbet:
         with open(fullpath + filename + fileformat, 'wb') as file:
             file.write(result.content)
 
-        return print("Water Level data file has been downloaded to " + fullpath + filename + fileformat)
+        return print("Water Level data file has been written to a file located in " + fullpath + filename + fileformat)
 
     def draw(self):
 

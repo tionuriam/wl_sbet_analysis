@@ -1,15 +1,8 @@
 import os
 import datetime
-from datetime import timezone, time
-from numpy import pi, cos, sin, log, exp
-import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib import dates
 import csv
 from xml.etree import ElementTree as ET
-import pandas as pd
-from scipy.signal import find_peaks
-import plotly.graph_objects as go
 import requests
 
 
@@ -37,24 +30,24 @@ class WaterLevel:
         # self.metadata["location_name"] = "Unknown"
 
         # download parameters
-        #start date and time only
-        self.start_end_datetime = dict()
-        self.start_end_datetime["begin_date"] = "20180614"
-        self.start_end_datetime["begin_time"] = "19:05"
-        self.start_end_datetime["end_date"] = "20180615"
-        self.start_end_datetime["end_time"] = "20:02"
-        # remaining parameters
-        self.api_parameters = dict()
-        self.api_parameters["filename"] = []
-        #self.api_parameters["begin_date"] = "20180614 19:05"
-        #self.api_parameters["end_date"] = "20180615,20:02"
-        self.api_parameters["station"] = "8423898"# enter station ID
-        self.api_parameters["product"] = "water_level"  # enter water_level
-        self.api_parameters["datum"] = "mllw"  # enter datum type
-        self.api_parameters["units"] = "metric"  # enter required units
-        self.api_parameters["time_zone"] = "gmt"  # enter timezone
-        self.api_parameters["application"] = "web_services"  # enter web application
-        self.api_parameters["format"] = 'xml'  # enter format of apidata output e.g. xml, csv or json
+        # #start date and time only
+        # self.start_end_datetime = dict()
+        # self.start_end_datetime["begin_date"] = "20180614"
+        # self.start_end_datetime["begin_time"] = "19:05"
+        # self.start_end_datetime["end_date"] = "20180615"
+        # self.start_end_datetime["end_time"] = "20:02"
+        # # remaining parameters
+        # self.api_parameters = dict()
+        # self.api_parameters["filename"] = []
+        # #self.api_parameters["begin_date"] = "20180614 19:05"
+        # #self.api_parameters["end_date"] = "20180615,20:02"
+        # self.api_parameters["station"] = "8423898"# enter station ID
+        # self.api_parameters["product"] = "water_level"  # enter water_level
+        # self.api_parameters["datum"] = "mllw"  # enter datum type
+        # self.api_parameters["units"] = "metric"  # enter required units
+        # self.api_parameters["time_zone"] = "gmt"  # enter timezone
+        # self.api_parameters["application"] = "web_services"  # enter web application
+        # self.api_parameters["format"] = 'xml'  # enter format of apidata output e.g. xml, csv or json
 
         # file extension details
         self.file_extension = str()
@@ -69,7 +62,7 @@ class WaterLevel:
         self.units = "metric"  # enter required units
         self.time_zone = "gmt"  # enter timezone
         self.application = "web_services"  # enter web application
-        self.format = 'xml'  # enter format of data output e.g. xml, csv or json
+        self.format = 'csv'  # enter format of data output e.g. xml, csv or json
 
 
 
@@ -107,7 +100,7 @@ class WaterLevel:
             self.waterlevel.append(float(data[1]))
             self.sigma.append(float(data[2]))
 
-
+        #print(self.times)
 
     def read_xml_file(self, fullpath):
         # Check the File's existence
@@ -143,6 +136,8 @@ class WaterLevel:
             #print(time)
             date_time_obj = datetime.datetime.strptime(time,'%Y-%m-%d %H:%M')
             self.times.append(date_time_obj)
+
+        print(self.date_time)
 
 
 
