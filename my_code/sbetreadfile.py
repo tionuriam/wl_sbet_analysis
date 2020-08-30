@@ -10,7 +10,15 @@ from math import floor
 from my_code.waterlevel_xmlread import WaterLevel
 from xml.etree import ElementTree as ET
 
-class sbet:
+import matplotlib.dates as mdates
+import utide
+from utide import solve, reconstruct
+from pandas.plotting import register_matplotlib_converters
+register_matplotlib_converters()
+
+from my_code.specter import specter
+
+class Sbet:
     """ Class to read sbet txt files"""
     
     def __init__(self):
@@ -44,7 +52,7 @@ class sbet:
         self.format_end_date = str()
 
         # user inputs; enter the required parameters
-        self.filename = "wl_20180614_22August"
+        self.filename = "wlsbet_0830"
         self.begin_date = str()  # format YYMMDD HHMM
         self.end_date = str()  # format YYMMDD HHM
         self.station = "8423898"  # enter station ID
@@ -53,7 +61,7 @@ class sbet:
         self.units = "metric"  # enter required units
         self.time_zone = "gmt"  # enter timezone
         self.application = "web_services"  # enter web application
-        self.format = 'csv'  # enter format of data output e.g. xml, csv or json
+        self.format = 'xml'  # enter format of data output e.g. xml, csv or json
 
         #self.sbet_list = list()
         self.fullpath = str()
@@ -71,11 +79,16 @@ class sbet:
         else:  # Raise a meaningful error
             raise RuntimeError('Unable to locate the input file' + fullpath)
             
-             # OK Read file
+        #      # OK Read file
+
+        # with open(fullpath) as f:
+        #     for line in f:
+        #         sbet_lines = line.split()
+        #         self.time_list.append(sbet_lines)
+
         sbet_txt_file = open(fullpath)
         sbet_data = sbet_txt_file.read()
         sbet_txt_file.close()
-
 
         #Tokenize
         sbet_lines = sbet_data.splitlines()
@@ -84,14 +97,13 @@ class sbet:
         sbet_list = []
         for line in sbet_lines:
             sbet_list.append(line.splitlines())
-
-
+        #
+        #
         #Grab the data/headings
         sbet_headers = []
         for headers in sbet_list[24]:
             headers = headers.split()
             sbet_headers.append(headers)
-
 
 
         #iterating through the data only and appending output into appropriate list
@@ -117,7 +129,7 @@ class sbet:
                 roll_sd = sbetvalues[17]
                 pitch_sd = sbetvalues[-2]
                 heading_sd = sbetvalues[-1]
-                
+
                 self.time_list.append(float(time))
                 #np.append(self.time_list.append(time))
                 self.distance_list.append(float(distance))
@@ -143,6 +155,7 @@ class sbet:
         # find mission start date and time and store as datetime variable. Information is taken from the sbet file
         start_date = str()
         start_time = str()
+
         for dates in sbet_list[15]:
             splitlines = dates.split()
             start_date = splitlines[3]
@@ -163,7 +176,7 @@ class sbet:
         min = time.minute
         sec = time.second
 
-        # Find date of start of week day (Sunday midnight of that week) from when the data was collected
+        # Find date of start of week day (Monday midnight of that week) from when the data was collected
         n = mission_start_date_time.weekday()  # int value of day of week
         count = 0
         while n > 0:
@@ -204,19 +217,19 @@ class sbet:
 
        # print("time:", self.times[0:10])
                 
-    # def time_distance(self):
-    #     """handling time and distance variables"""
-    #
-    #     #total time vessel travelled
-    #     time_array = np.array([self.time_list])
-    #     time_cumsum = np.sum(np.diff(time_array))
-    #
-    #     #print(np.shape(time_cumsum))
-    #     print("Total time travelled(sec): ", time_cumsum)# adding the difference between each time interval in the dataset
-    #
-    #     # total distance vessel travelled
-    #     distance_travelled = (self.distance_list[-1])
-    #     print("Total distance travelled(m): ", distance_travelled)
+    def time_distance(self):
+        """handling time and distance variables"""
+
+        #total time vessel travelled
+        time_array = np.array([self.time_list])
+        time_cumsum = np.sum(np.diff(time_array))
+
+        #print(np.shape(time_cumsum))
+        print("Total time travelled(sec): ", time_cumsum)# adding the difference between each time interval in the dataset
+
+        # total distance vessel travelled
+        distance_travelled = (self.distance_list[-1])
+        print("Total distance travelled(m): ", distance_travelled)
 
 
     # def waterlevel(self):
@@ -261,6 +274,47 @@ class sbet:
             file.write(result.content)
 
         return print("Water Level data file has been written to a file located in " + fullpath + filename + fileformat)
+
+    def f_spectrum(self,lat,m,dt,ave ):
+
+        """Function accepts 4 arguments, lat - latitude of station; the latitude of station can be extracted if the water level file
+        is in an xml file when the read_xml_file function is run, for csv, you would need to look this  up. The three parameters required for the specter function
+         which are m, dt, and ave (refer to specter class for descriptions of each)"""
+
+        # Determine the number of records
+        nr_records = len(self.ellipsoid_height_list)
+        # print(nr_records)
+
+        # Allocate memory for the water levels (ttides uses numpy arrays)
+        # wl_fp = np.zeros(nr_records)
+        wl_fp = np.array(self.ellipsoid_height_list)  # nr_records x 1 array to hold the water levels from Fort Point
+        # print(wl_fp)
+        # list that holds associated times
+        t_fp = np.array(self.times)
+        #
+        # # # # Set the latitude of the Fort Point Gauge (in degrees!)
+        lat_fp = lat
+        # # #
+        # time_fp = mdates.date2num(t_fp)
+        # c_fp = utide.solve(time_fp, wl_fp, lat=lat_fp, method='ols', conf_int='MC', trend=False)
+        #
+        # f = 0
+        # print('')
+        # print(f"{'Darwin':>9}"f"{'freq':>10}", f"{'Amp':>9}", f"{'95ci%':>9}", f"{'phase':>9}", f"{'95ci%':>9}",
+        #       f"{'SNR':>9}")
+        # for idx, const in enumerate(c_fp.name):
+        #     print("%9s% 10.4f% 10.4f% 10.4f% 10.2f% 10.2f% 10.2f" \
+        #           % (const, c_fp.aux.frq[idx], c_fp.A[idx], c_fp.A_ci[idx], c_fp.g[idx], c_fp.g_ci[idx],
+        #              c_fp.diagn['SNR'][idx]))
+        #     f = f + 1
+
+        # print(f)
+
+        spec_fp = specter(wl_fp,m,dt,ave)
+
+
+
+
 
     def draw(self):
 

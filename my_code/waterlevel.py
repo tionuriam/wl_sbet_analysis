@@ -4,6 +4,16 @@ import matplotlib.pyplot as plt
 import csv
 from xml.etree import ElementTree as ET
 import requests
+import numpy as np
+import matplotlib.dates as mdates
+import utide
+from utide import solve, reconstruct
+from pandas.plotting import register_matplotlib_converters
+register_matplotlib_converters()
+from my_code.specter import specter
+
+
+import statistics
 
 
 class WaterLevel:
@@ -53,16 +63,16 @@ class WaterLevel:
         self.file_extension = str()
 
         # user inputs; enter the required parameters
-        self.filename = "wl_20180614_data"
-        self.begin_date = "20180614 19:05" # format YYMMDD HHMM
-        self.end_date = "20180615 20:02"  # format YYMMDD HHM
+        self.filename = "wl_201806_data"
+        self.begin_date = "20180601 00:00" # format YYMMDD HHMM
+        self.end_date = "20180630 23:00"  # format YYMMDD HHM
         self.station = "8423898"  # enter station ID
         self.product = "water_level"  # enter water_level
         self.datum = "mllw"  # enter datum type
         self.units = "metric"  # enter required units
         self.time_zone = "gmt"  # enter timezone
         self.application = "web_services"  # enter web application
-        self.format = 'csv'  # enter format of data output e.g. xml, csv or json
+        self.format = 'xml'  # enter format of data output e.g. xml, csv or json
 
 
 
@@ -95,12 +105,15 @@ class WaterLevel:
             # data.split()
             date_time_str = data[0]
             #print(date_time_str)
-            date_time_obj = datetime.datetime.strptime(date_time_str, '%Y-%m-%d %H:%M')
+            #print(date_time_str)
+            date_time_obj = datetime.datetime.strptime(date_time_str, '%Y-%m-%d %H:%M') # NOAA format
+
+            # date_time_obj = datetime.datetime.strptime(date_time_str, '%m-%d-%Y %H:%M') #for kiribati data
             self.times.append(date_time_obj)
             self.waterlevel.append(float(data[1]))
             self.sigma.append(float(data[2]))
-
-        #print(self.times)
+        #
+        # #print(self.times)
 
     def read_xml_file(self, fullpath):
         # Check the File's existence
@@ -124,6 +137,11 @@ class WaterLevel:
             tree = ET.parse(file)
             root = tree.getroot()
 
+        for values in root:
+            print("Station Information:",values.attrib)
+
+
+
         # accessing values in child directory (observations)
         for values in root.iter('wl'):
             self.date_time.append(values.attrib['t'])
@@ -137,7 +155,8 @@ class WaterLevel:
             date_time_obj = datetime.datetime.strptime(time,'%Y-%m-%d %H:%M')
             self.times.append(date_time_obj)
 
-        print(self.date_time)
+        #metadata
+
 
 
 
@@ -196,13 +215,112 @@ class WaterLevel:
 
         return print("File saved in " + fullpath + filename + fileformat)
 
+    def analyse_tide(self,m,dt,ave):
+
+        """Function accepts 3 arguments,which are m, dt, and ave (refer to specter class for descriptions of each)"""
+
+        #Determine the number of records
+        nr_records = len(self.waterlevel)
+        # print(nr_records)
+
+        #Allocate memory for the water levels (ttides uses numpy arrays)
+        #wl_fp = np.zeros(nr_records)
+        wl_fp = np.array(self.waterlevel)# nr_records x 1 array to hold the water levels from Fort Point
+        # print(wl_fp)
+        #list that holds associated times
+        t_fp =np.array(self.times)
+        #
+        # # # Set the latitude of the Fort Point Gauge (in degrees!)
+        lat_fp = 41.8071
+        #
+        time_fp = mdates.date2num(t_fp)
+        c_fp = utide.solve(time_fp, wl_fp, lat=lat_fp, method='ols', conf_int='MC', trend=False)
+        #
+        f = 0
+        print('')
+        print(f"{'Darwin':>9}"f"{'freq':>10}", f"{'Amp':>9}", f"{'95ci%':>9}", f"{'phase':>9}", f"{'95ci%':>9}",
+              f"{'SNR':>9}")
+        for idx, const in enumerate(c_fp.name):
+            print("%9s% 10.4f% 10.4f% 10.4f% 10.2f% 10.2f% 10.2f" \
+                  % (const, c_fp.aux.frq[idx], c_fp.A[idx], c_fp.A_ci[idx], c_fp.g[idx], c_fp.g_ci[idx],
+                     c_fp.diagn['SNR'][idx]))
+            f = f + 1
+
+        print(f)
+
+        # Predict the tides using the outcome of the tidal analysis
+        tide_fp = utide.reconstruct(time_fp, c_fp)
+
+        #drawing tides
+        print("drawing tides")
+
+        fig, (ax0, ax1, ax2) = plt.subplots(nrows=3, sharey=True, sharex=True, figsize=(10, 10))
+
+        ax0.plot(t_fp, wl_fp, label=u'Observations', color='C0')
+        ax0.set_ylabel('Observed WL [m]')
+        ax1.plot(t_fp, tide_fp.h, label=u'Tide Fit', color='C1')
+        ax1.set_ylabel('Predicted Tide [m]')
+        ax2.plot(t_fp, wl_fp - tide_fp.h, label=u'Residual', color='C2')
+        ax2.set_ylabel('Residual [m]')
+        ax2.xaxis_date()
+        fig.legend(ncol=3, loc='upper center')
+        fig.autofmt_xdate()
+        plt.show()
+        #
+
+        print("Make prediction for 5 most significant constituents at station")
+
+        c_fp.name[1:2]
+
+        pred_M2_fp = utide.reconstruct(time_fp, c_fp, constit=c_fp.name[0:1])
+        pred_N2_fp = utide.reconstruct(time_fp, c_fp, constit=c_fp.name[1:2])
+        pred_S2_fp = utide.reconstruct(time_fp, c_fp, constit=c_fp.name[2:3])
+        pred_K1_fp = utide.reconstruct(time_fp, c_fp, constit=c_fp.name[3:4])
+        pred_O1_fp = utide.reconstruct(time_fp, c_fp, constit=c_fp.name[4:5])
+
+        plt.figure(figsize=(10, 10))
+        fig, (ax0, ax1, ax2, ax3, ax4) = plt.subplots(nrows=5, sharey=True, sharex=True, figsize=(10, 10))
+        ax0.plot(time_fp, pred_M2_fp.h, label='M2 Constituent')
+        ax0.legend()
+        ax0.set_ylabel('Amplitude[m]')
+        ax1.plot(time_fp, pred_N2_fp.h, label='N2 Constituent')
+        ax1.legend()
+        ax1.set_ylabel('Amplitude[m]')
+        ax2.plot(time_fp, pred_S2_fp.h, label='S2 Constituent')
+        ax2.legend()
+        ax2.set_ylabel('Amplitude[m]')
+        ax3.plot(time_fp, pred_K1_fp.h, label='K1 Constituent')
+        ax3.legend()
+        ax3.set_ylabel('Amplitude[m]')
+        ax4.plot(time_fp, pred_O1_fp.h, label='O1 Constituent')
+        ax4.legend()
+        ax4.set_ylabel('Amplitude[m]')
+        ax4.xaxis_date()
+        fig.autofmt_xdate()
+
+
+        #specter(x,m,dt,ave):
+        #x is number data points
+        # length of wl_fp gives the number of data pints in this case
+        #the number of sequences x,
+        #m is some number of points that must be of the power of two e.g. 2**11
+
+        spec_fp = specter(wl_fp,m, dt, ave)
+        #print(len(wl_fp),2**4)
+
+
+
+
 
 
     def draw(self):
 
         #xaxis = dates.date2num(self.times[0])
 
+        #mean_wl = [statistics.mean(self.waterlevel)] * len(self.times)
+
         plt.plot(self.times, self.waterlevel)
+        #plt.plot(self.times, mean_wl,'g--')
         plt.title("Water Level Data")
         plt.ylabel("Water Level in [m] above Chart Datum")
         plt.xticks()
