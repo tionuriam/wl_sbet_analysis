@@ -64,8 +64,8 @@ class WaterLevel:
 
         # user inputs; enter the required parameters
         self.filename = "wl_201806_data"
-        self.begin_date = "20180601 00:00" # format YYMMDD HHMM
-        self.end_date = "20180630 23:00"  # format YYMMDD HHM
+        self.begin_date = "20190601 00:00" # format YYMMDD HHMM
+        self.end_date = "20190630 23:00"  # format YYMMDD HHM
         self.station = "8423898"  # enter station ID
         self.product = "water_level"  # enter water_level
         self.datum = "mllw"  # enter datum type
@@ -74,7 +74,8 @@ class WaterLevel:
         self.application = "web_services"  # enter web application
         self.format = 'xml'  # enter format of data output e.g. xml, csv or json
 
-
+        #tide analysis components
+        #self.c_fp
 
 
     def read_csv_file(self, fullpath):
@@ -215,9 +216,9 @@ class WaterLevel:
 
         return print("File saved in " + fullpath + filename + fileformat)
 
-    def analyse_tide(self,m,dt,ave):
+    def analyse_tide(self,lat):
 
-        """Function accepts 3 arguments,which are m, dt, and ave (refer to specter class for descriptions of each)"""
+        """Function accepts 1 argument, which the station latitude"""
 
         #Determine the number of records
         nr_records = len(self.waterlevel)
@@ -231,11 +232,11 @@ class WaterLevel:
         t_fp =np.array(self.times)
         #
         # # # Set the latitude of the Fort Point Gauge (in degrees!)
-        lat_fp = 41.8071
+        lat_fp = lat
         #
         time_fp = mdates.date2num(t_fp)
         c_fp = utide.solve(time_fp, wl_fp, lat=lat_fp, method='ols', conf_int='MC', trend=False)
-        #
+        print(type(c_fp))
         f = 0
         print('')
         print(f"{'Darwin':>9}"f"{'freq':>10}", f"{'Amp':>9}", f"{'95ci%':>9}", f"{'phase':>9}", f"{'95ci%':>9}",
@@ -247,6 +248,7 @@ class WaterLevel:
             f = f + 1
 
         print(f)
+
 
         # Predict the tides using the outcome of the tidal analysis
         tide_fp = utide.reconstruct(time_fp, c_fp)
@@ -299,24 +301,23 @@ class WaterLevel:
         fig.autofmt_xdate()
 
 
-        #specter(x,m,dt,ave):
-        #x is number data points
+        # spec_fp = specter(wl_fp,m, dt, ave)
+        # #print(len(wl_fp),2**4)
+
+    def f_spetrum_wl(self,m,dt,ave):
+
+        # specter(x,m,dt,ave):
+        # x is number data points
         # length of wl_fp gives the number of data pints in this case
-        #the number of sequences x,
-        #m is some number of points that must be of the power of two e.g. 2**11
+        # the number of sequences x,
+        # m is some number of points that must be of the power of two e.g. 2**11
 
-        spec_fp = specter(wl_fp,m, dt, ave)
-        #print(len(wl_fp),2**4)
-
-
-
-
-
+        wl_fp = np.array(self.waterlevel) # data points in an array
+        spec_fp = specter(wl_fp, m, dt, ave)
 
     def draw(self):
 
         #xaxis = dates.date2num(self.times[0])
-
         #mean_wl = [statistics.mean(self.waterlevel)] * len(self.times)
 
         plt.plot(self.times, self.waterlevel)

@@ -275,41 +275,12 @@ class Sbet:
 
         return print("Water Level data file has been written to a file located in " + fullpath + filename + fileformat)
 
-    def f_spectrum(self,lat,m,dt,ave ):
+    def f_spectrum_sbet(self,m,dt,ave ):
 
-        """Function accepts 4 arguments, lat - latitude of station; the latitude of station can be extracted if the water level file
-        is in an xml file when the read_xml_file function is run, for csv, you would need to look this  up. The three parameters required for the specter function
+        """Function accepts 3 arguments, three parameters required for the specter function
          which are m, dt, and ave (refer to specter class for descriptions of each)"""
 
-        # Determine the number of records
-        nr_records = len(self.ellipsoid_height_list)
-        # print(nr_records)
-
-        # Allocate memory for the water levels (ttides uses numpy arrays)
-        # wl_fp = np.zeros(nr_records)
         wl_fp = np.array(self.ellipsoid_height_list)  # nr_records x 1 array to hold the water levels from Fort Point
-        # print(wl_fp)
-        # list that holds associated times
-        t_fp = np.array(self.times)
-        #
-        # # # # Set the latitude of the Fort Point Gauge (in degrees!)
-        lat_fp = lat
-        # # #
-        # time_fp = mdates.date2num(t_fp)
-        # c_fp = utide.solve(time_fp, wl_fp, lat=lat_fp, method='ols', conf_int='MC', trend=False)
-        #
-        # f = 0
-        # print('')
-        # print(f"{'Darwin':>9}"f"{'freq':>10}", f"{'Amp':>9}", f"{'95ci%':>9}", f"{'phase':>9}", f"{'95ci%':>9}",
-        #       f"{'SNR':>9}")
-        # for idx, const in enumerate(c_fp.name):
-        #     print("%9s% 10.4f% 10.4f% 10.4f% 10.2f% 10.2f% 10.2f" \
-        #           % (const, c_fp.aux.frq[idx], c_fp.A[idx], c_fp.A_ci[idx], c_fp.g[idx], c_fp.g_ci[idx],
-        #              c_fp.diagn['SNR'][idx]))
-        #     f = f + 1
-
-        # print(f)
-
         spec_fp = specter(wl_fp,m,dt,ave)
 
 
