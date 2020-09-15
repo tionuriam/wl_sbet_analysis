@@ -17,6 +17,11 @@ from pandas.plotting import register_matplotlib_converters
 register_matplotlib_converters()
 
 from my_code.specter import specter
+import scipy
+
+from scipy import signal
+import pandas as pd
+
 
 class Sbet:
     """ Class to read sbet txt files"""
@@ -62,6 +67,10 @@ class Sbet:
         self.time_zone = "gmt"  # enter timezone
         self.application = "web_services"  # enter web application
         self.format = 'xml'  # enter format of data output e.g. xml, csv or json
+
+        #resamling component
+        self.interp_data = ([])
+
 
         #self.sbet_list = list()
         self.fullpath = str()
@@ -284,6 +293,108 @@ class Sbet:
         spec_fp = specter(wl_fp,m,dt,ave)
 
 
+    def sample_rate(self):
+        times_array = np.array(self.time_list)
+
+        sample_rate = np.diff(times_array)
+        f_max = np.max(sample_rate) # units in hz
+        f_min = np.min(sample_rate) # units in hz
+
+        print("number of samples:", len(self.times))
+        print("max sample_rate:", f_max)
+        print("min sample_rate:", f_min)
+
+        # cut off frequency is 1 sample every 720 seconds
+        f_cut_off = 1 / 720  # hz
+        print("Cut off frequency is:", f_cut_off)  # hz
+
+        # preparing the data
+        time_interval = np.cumsum(np.diff(np.array(self.time_list)))
+        data = np.array(self.ellipsoid_height_list)
+        signal = zip(time_interval,data)
+        #time_vector = np.arange(0,len(self.ellipsoid_height_list),sample_rate)
+
+        # print(tuple(signal))
+        #
+        # plt.plot(signal)
+        # plt.show()
+        #
+        # period = time_interval[-1]
+        # print(period)
+
+        # # Fourier transform frequency
+        # n = len(self.ellipsoid_height_list)
+        # signal = np.array(self.ellipsoid_height_list)
+        # # n = signal.size
+        # print(n)
+        # fourier = np.fft.fft(signal) / n  # fft of the signal
+        # timestep = 720
+        # freq = np.fft.fftfreq(n,d=timestep) # frequencies
+        #
+        # PSD = fourier * np.conj(fourier) / n # Power spectrum
+        #
+        # plt.plot(freq,PSD)
+        # plt.show()
+        # plt.ylabel("Frequency")
+        # plt.xlabel("PSD")
+
+
+    def fft(self,sr):
+        #sr refer to sampling rate. The sampling rate is entered by the user.
+        #this method is an fft that resamples the data and then does the fft; this can be done independent of the resample method
+        # the resample method is used to visualise the difference between the resampled data and the original
+        time = np.array(self.time_list)
+        magnitude = np.array(self.ellipsoid_height_list)
+
+        #varaibles for resampling
+        time_start = time[0] #you may change this value for a subset
+        time_end = time[-1] #you may change this value for a subset
+        sampling_rate = sr
+        time_interval = np.arange(time_start,time_end,sampling_rate)
+
+        #interpolation of dataset based on time interval and sample rate
+        interp_data = np.interp(time_interval,time,magnitude)
+
+        # Frequency domain representation
+        fourierTransform = np.fft.fft(interp_data) / len(interp_data)  # Normalize amplitude
+        fourierTransform = fourierTransform[range(int(len(interp_data) / 2))]  # Exclude sampling frequency
+        tpCount = len(interp_data)
+        values = np.arange(int(tpCount / 2))
+        timePeriod = tpCount / sampling_rate
+        frequencies = values / timePeriod
+
+        # Frequency domain representation
+        plt.title('Fourier transform depicting the frequency components')
+        plt.plot(frequencies, abs(fourierTransform))
+        plt.xlabel('frequency[hz]')
+        plt.ylabel('amplitude[m]')
+        plt.legend()
+        plt.show()
+
+    def resample(self,sr):
+        #sr refer to sampling rate. The sampling rate is entered by the user.
+        #data set
+        time = np.array(self.time_list)
+        magnitude = np.array(self.ellipsoid_height_list)
+
+        #varaibles for resampling
+        time_start = time[0] #you may change this value for a subset
+        time_end = time[-1] #you may change this value for a subset
+        sampling_rate = sr
+        time_interval = np.arange(time_start,time_end,sampling_rate)
+
+        #interpolation of dataset based on time interval and sample rate
+        interp_data = np.interp(time_interval,time,magnitude)
+
+        #plot results; original data vs resmpled
+        plt.plot(time,magnitude, label="Original")
+        plt.plot(time_interval,interp_data,label="Resampled")
+        plt.xlabel('time[seconds]')
+        plt.ylabel('elevation[m]')
+        plt.title('Sbet plotted data')
+        plt.legend()
+        plt.gcf().autofmt_xdate()
+        plt.show()
 
 
 
