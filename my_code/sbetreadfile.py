@@ -364,7 +364,7 @@ class Sbet:
         frequencies = values / timePeriod
 
         # Frequency domain representation
-        plt.title('Fourier transform depicting the frequency components')
+        plt.title('Fourier transform depicting the frequency components:' + str(sampling_rate) + 'secs sampling rate')
         plt.plot(frequencies, abs(fourierTransform))
         plt.xlabel('frequency[hz]')
         plt.ylabel('amplitude[m]')
@@ -391,7 +391,7 @@ class Sbet:
         plt.plot(time_interval,interp_data,label="Resampled")
         plt.xlabel('time[seconds]')
         plt.ylabel('elevation[m]')
-        plt.title('Sbet plotted data')
+        plt.title('Sbet plotted data:' + str(sampling_rate) + "secs sampling rate")
         plt.legend()
         plt.gcf().autofmt_xdate()
         plt.show()
