@@ -342,83 +342,6 @@ class Sbet:
         plt.show()
 
 
-
-
-    def fft2(self,sr):
-
-        #data is not resampled
-        samplingFrequency = sr
-        samplingInterval = 1/samplingFrequency
-        beginTime = self.time_list[0]
-        endTime = self.time_list[-1] - self.time_list[0]
-
-        amplitude = self.ellipsoid_height_list #signal itself
-        time = self.time_list # time is irrelevant
-
-
-
-        # Frequency domain representation
-        fourierTransform = np.fft.fft(amplitude) / len(amplitude)  # Normalize amplitude
-        spectrum = fourierTransform[range(int(len(amplitude) / 2))]  # Exclude sampling frequency
-
-        #Fourier transform sample frequencies
-        # spectrum = np.fft.fft(amplitude)
-        freq = np.fft.fftfreq(len(spectrum), sr)
-
-        np_data = np.array([abs(freq), abs(spectrum)])
-        np_data_trans = np.transpose(np_data)
-        df = pd.DataFrame(data=np_data_trans, columns=["Freq", "Amplitude"])
-
-        print(df)
-
-        max_value = df["Amplitude"].max()
-        min_value = df["Freq"].min
-
-        # frequency convert to hours
-        # period_sec = 1 / min_value  # period in seconds
-        # period_hrs = period_sec / 3600  # period in hours
-        # print(period_hrs)
-
-        print("Max ampl:\n" + str(max_value), "\nMin Freq:\n" + str(min_value))
-
-        # plt.plot(freq, abs(spectrum))
-        # plt.xlabel('frequency[hz]')
-        # plt.ylabel('Spectrum')
-        # # plt.legend()
-        # plt.show()
-        # plt.show()
-
-        # tpCount = len(amplitude)
-        # values = np.arange(int(tpCount / 2))
-        # timePeriod = tpCount / samplingFrequency
-        # frequencies = values / timePeriod
-
-        plt.title('Fourier transform depicting the frequency components:' + str(samplingFrequency) + 'secs sampling rate')
-        plt.plot(freq, abs(spectrum))
-        plt.xlabel('frequency[hz]')
-        plt.ylabel('amplitude[m]')
-        # plt.legend()
-        plt.show()
-
-    def filter(self,value):
-        PSD = (self.fft_values)**2 # power spectrum density
-        print(PSD)
-        t = self.time_interval
-        fhat = self.fft_values # fourier constants
-        indices = PSD > value # find all frequenices with larger power
-        PSDClean = PSD * indices # zero out small all others
-        fhat = indices * fhat # zero out small fourier coefficients in Y
-        ffilt = np.fft.ifft(fhat) # inverse FFT filter time signal
-
-        plt.title('Results')
-        plt.plot(t,ffilt)
-        plt.xlabel('time[s]')
-        plt.ylabel('amplitude[m]')
-        # plt.legend()
-        plt.show()
-
-
-
     def fft_window(self,start,end):
         """ start and end refers to the index values"""
         #extracting data interval to view
@@ -461,47 +384,7 @@ class Sbet:
         plt.show()
 
 
-    def fft3(self,sr):
-        # sr refer to sampling rate. The sampling rate is entered by the user.
-        # this method is an fft that resamples the data and then does the fft; this can be done independent of the resample method
-        # the resample method is used to visualise the difference between the resampled data and the original
-        time = np.array(self.time_list)
-        amplitude = np.array(self.ellipsoid_height_list)
 
-        # varaibles for resampling
-        time_start = time[0]  # you may change this value for a subset
-        time_end = time[-1]  # you may change this value for a subset
-        sampling_rate = sr
-        time_interval = np.arange(time_start, time_end, sampling_rate)
-
-        print(len(time_interval))
-
-        # # interpolation of dataset based on time interval and sample rate
-        interp_data = np.interp(time_interval, time, amplitude)
-        print(len(interp_data))
-
-        # Frequency domain representation
-        fourierTransform = np.fft.fft(interp_data)  # Normalize amplitude
-        print(len(abs(fourierTransform)))
-        # # fourierTransform = fourierTransform[range(int(len(interp_data) / 2))]  # Exclude sampling frequency
-
-        n = len(interp_data)
-        PSD = fourierTransform * np.conjugate(fourierTransform)/len(interp_data) #power spectrum density
-        freq = (1/(sampling_rate*len(interp_data))) * np.arange(len(interp_data)) # create x axis of frequencies
-        L = np.arange(1,np.floor(n/2),dtype ='int')
-        print(L)
-
-        #Filter out unwanted frequencies
-        indices = PSD > 150
-        PSDclean = PSD * indices
-        fourierTransform = indices * fourierTransform
-        ffilt = np.fft.ifft(fourierTransform)
-
-        plt.plot(time_interval, ffilt)
-        plt.xlabel('frequency[hz]')
-        plt.ylabel('power spectrum')
-        # # plt.legend()
-        plt.show()
 
 
     def fft(self,sr):
