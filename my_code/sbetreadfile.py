@@ -438,7 +438,25 @@ class Sbet:
         plt.setp(ax2.get_xticklabels(), visible=True)
         plt.show()
 
+    def highpassfilter(self):
+        """For this to work you need to first run the resample function in order to get the resampled signal values and time interval"""
+        sig = self.resampled_signal
+        times = self.time_interval
+        # t = np.linspace(0, 1, 1000, False)
+
+        sos = scipy.signal.butter(50,80,'low', fs=len(sig), output='sos')
+        filtered = scipy.signal.sosfilt(sos, sig)
+        plt.plot(filtered)
+        # ax2.set_title('After 15 Hz high-pass filter')
+        # ax2.axis([0, 1, -2, 2])
+        # ax2.set_xlabel('Time [seconds]')
+        # plt.tight_layout()
+        plt.show()
+
+
+
     def bandpassfilter(self,low_freq, hi_freq):
+        """For this to work you need to first run the resample function in order to get the resampled signal values and time interval"""
         signal = self.resampled_signal
         times = self.time_interval
 
@@ -447,6 +465,10 @@ class Sbet:
         # time = np.linspace(times[0], times[-1], len(signal))
         # plt.plot(times[:n],signal[:n])
         # plt.show()
+
+        #normalise signal
+        normalised_signal = (signal - np.min(signal))/(np.max(signal) - np.min(signal))
+
 
         fs = n  # frequency space
         lowcut = low_freq# lowest freq
@@ -458,16 +480,33 @@ class Sbet:
         #
         order = 2
 
-        b, a = scipy.signal.butter(order, [low, high], 'bandpass', analog=False)
-        filtered_signal = scipy.signal.filtfilt(b, a, signal, axis=0)
 
+        b, a = scipy.signal.butter(order, [low, high], 'bandpass', analog=False)
+        filtered_signal = scipy.signal.filtfilt(b, a, signal)
+
+        ax1 = plt.subplot(2, 1, 1)
         plt.title('Band pass filter:' + str(lowcut) + '-' + str(highcut)+ 'hz')
+        plt.ylabel('Ampltidue [Normalized]')
+        # plt.xlabel('Time')
+        plt.plot(times, normalised_signal, 'b-',label='signal')
+        plt.plot(times, filtered_signal, 'g-', label='filtered')
+        plt.legend()
+
+
+        ax2 = plt.subplot(2, 1, 2)
+        # plt.title("Filtered only")
         plt.ylabel('Ampltidue')
-        plt.xlabel('Time')
-        plt.plot(times, filtered_signal)
+        plt.xlabel('Time[Seconds of week')
+        plt.plot(times, filtered_signal, 'g-', label= 'filtered')
+        plt.legend()
+
+        plt.setp(ax1.get_xticklabels(), visible=True)
+        plt.setp(ax2.get_xticklabels(), visible=True)
         plt.show()
 
+
     def lowpassfilter(self,cut_off_freq):
+        """For this to work you need to first run the resample function in order to get the resampled signal values and time interval"""
 
         # filter parameters
         duration = self.time_interval[-1] - self.time_interval[0]
@@ -497,6 +536,7 @@ class Sbet:
         plt.plot(Time, Filtered_signal, 'g-', linewidth=2, label='filtered signal')
         plt.legend()
         plt.show()
+
 
 
 
@@ -637,54 +677,6 @@ class Sbet:
         plt.setp(ax2.get_xticklabels(), visible=True)
         #plt.setp(ax3.get_xticklabels(), visible=True)
         plt.show()
-
-    def low_pass_filter(self):
-        # order = 5
-        # sampling_freq = 30
-        # cutoff_freq = 2
-        # sampling_duration = 5
-        # number_of_samples = sampling_freq * sampling_duration
-        #
-        # time = np.linspace(0, sampling_duration, number_of_samples, endpoint=False)
-        # signal = np.sin(2 * np.pi * time) + 0.5 * np.cos(6 * 2 * np.pi * time) + 1.5 * np.sin(9 * 2 * np.pi * time)
-        # normalized_cutoff_freq = 2 * cutoff_freq / sampling_freq
-        # numerator_coeffs, denominator_coeffs = scipy.signal.butter(order, normalized_cutoff_freq)
-        # filtered_signal = scipy.signal.lfilter(numerator_coeffs, denominator_coeffs, signal)
-        # plt.plot(time, signal, 'b-', label='signal')
-        # plt.plot(time, filtered_signal, 'g-', linewidth=2, label='filtered signal')
-        # plt.legend()
-        # plt.show()
-
-        # #real data
-        # Order = 2
-        # Sampling_freq = 10
-        # Cutoff_freq = 1
-        #
-
-        # self.natural_frequencies_example = nu
-        # Filter requirements.
-        T = 1800  # Sample Period
-        Sampling_freq = 1  # sample rate, Hz
-        Cutoff_freq =0.02 # desired cutoff frequency of the filter, Hz ,slightly higher than actual 1.2 Hz
-        # nyq = 0.5 * fs  # Nyquist Frequency
-        Order = 2  # sin wave can be approx represented as quadratic
-        n = int(T * Sampling_freq)  # total number of samples
-        #Time = self.time_interval[]
-        Signal = self.fft_values_example
-        print(Signal)
-
-        Normalized_cutoff_freq = 2 * Cutoff_freq / Sampling_freq
-        Numerator_coeffs, Denominator_coeffs = scipy.signal.butter(Order, Normalized_cutoff_freq)
-        Filtered_signal = scipy.signal.lfilter(Numerator_coeffs, Denominator_coeffs, Signal)
-        plt.plot(Signal, 'b-', label='signal')
-        #plt.plot(Filtered_signal, 'g-', linewidth=2, label='filtered signal')
-        plt.legend()
-        plt.show()
-
-
-
-
-
 
     def resample(self,sr):
         #sr refer to sampling rate. The sampling rate is entered by the user.
