@@ -9,6 +9,12 @@ from pandas.plotting import register_matplotlib_converters
 register_matplotlib_converters()
 from my_code.specter import specter
 import pandas as pd
+from numpy import pi, cos, sin
+import scipy
+# from scipy import signal, butter, filtfilt
+from scipy.signal import butter, filtfilt
+import plotly.graph_objects as go
+
 
 
 class Sbet:
@@ -57,11 +63,16 @@ class Sbet:
         self.format = 'xml'  # enter format of data output e.g. xml, csv or json
 
         #resamling and fft component
-        self.interp_data = ([])
-        self.fft_frequencies = ([])
-        self.fft_values = ([])
-        self.time_interval = ([])
+        self.interp_data = ([]) # resampled data (amplitude vs time)
+        self.natural_frequencies = ([]) # natural frequencies for the resampled data
+        self.fft_values = ([]) # fft values - square it to get power
+        self.time_interval = ([]) # new time interval based on new sampling rate
+        self.resampled_signal =([]) # same as interp data
+        self.sampling_rate = ([]) # entered sampling rate
 
+        #example
+        self.fft_values_example = ([]) # fft values - square it to get power
+        self.natural_frequencies_example = ([]) # natural frequency based on all data
 
         #self.sbet_list = list()
         self.fullpath = str()
@@ -280,7 +291,7 @@ class Sbet:
         """Function accepts 3 arguments, three parameters required for the specter function
          which are m, dt, and ave (refer to specter class for descriptions of each)"""
 
-        wl_fp = np.array(self.ellipsoid_height_list)  # nr_records x 1 array to hold the water levels from Fort Point
+        wl_fp = np.array(self.ellipsoid_height_list)  # nr_records x 1 array to hold the water levels from station
         spec_fp = specter(wl_fp,m,dt,ave)
 
 
@@ -342,46 +353,212 @@ class Sbet:
         plt.show()
 
 
-    def fft_window(self,start,end):
-        """ start and end refers to the index values"""
+    def fft_window(self,ind_start: int = 0, ind_end: int = -1 ):
+        """ This function is mainly for visualisation. Start and end refers to the index values. Remeber to set the threshold if you wish to filter your data based on freq or power"""
+        # set window
         #extracting data interval to view
-        freq = self.fft_frequencies[start:end]
-        power = ((self.fft_values[start:end])**2)
+        # freq = self.natural_frequencies[ind_start:ind_end]
+        # power = (self.fft_values[ind_start:ind_end])**2
 
-        # puting data into data frame
-        np_data = np.array([freq, power])
+        freq = self.natural_frequencies_example[ind_start:ind_end]
+        power = (self.fft_values_example[ind_start:ind_end])**2
+
+
+        # putting data into data frame
+        np_data = [freq, power]
         np_data_trans = np.transpose(np_data)
         raw_data = pd.DataFrame(data=np_data_trans, columns=["Freq", "Power"])
-
+        #
         #identify max and min values in data
         max_value = raw_data.max()
         min_value = raw_data.min()
         print("Max values:\n" + str(max_value), "\nMin values:\n" + str(min_value))
+        #
+         #filter out values
+        # threshold = power > 0.0001
+        # you can set the thresholds here based on power or frequency and one of the threshold values needs to be an empty list
+        threshold_value = 1
+        threshold_power = [] # e.g. power < 100
+        threshold_freq = freq == 1 # e.g. freq < 100
+        #
+        if len(threshold_power) > 0:
+            filtered = pd.DataFrame(data=np_data_trans[threshold_power], columns=["F_Freq", "F_Power"])
+            filter_str = "Power"
+        else:
+            filtered = pd.DataFrame(data=np_data_trans[threshold_freq], columns=["F_Freq", "F_Power"])
+            y = filtered["F_Power"]
+            # removed_outliers = y.between(y.quantile(.05), y.quantile(.95))
+            # outliers = pd.DataFrame(data=np_data_trans[:len(removed_outliers)], columns=["F_Freq", "F_Power"])
+            # # print("Outerliers:" + str(len(removed_outliers)))
+            filter_str = "Frequency"
+            #
+            # plt.plot(outliers)
+            # plt.show()
 
-        #filter out values
-        threshold = power > 1
-        filtered = pd.DataFrame(data=np_data_trans[threshold], columns=["F_Freq", "F_Power"])
-        print(filtered)
+        #
+        #
+        # print(threshold_freq,threshold_power)
+        # filtered = pd.DataFrame(data=np_data_trans[threshold], columns=["F_Freq", "F_Power"])
+        # identify max and min values in data
+        max_filt_value = raw_data.max()
+        min_filt_value = raw_data.min()
+        print("Filtered Max values:\n" + str(max_filt_value), "\nFiltered Min values:\n" + str(min_filt_value))
 
+        # threshold = freq < 0.002
+        # filtered = pd.DataFrame(data=np_data_trans[threshold], columns=["F_Freq", "F_Power"])
+
+        # print(filtered)
+        #
+        #
         #plot data
         ax1 = plt.subplot(2, 1, 1)
         # plt.figure(figsize=(5, 20))
-        plt.title("Raw/Unfiltered data", loc='left')
-        plt.plot(raw_data["Freq"],raw_data["Power"])
-        plt.xlabel('frequency [hz]')
+        plt.title("Power spectrum: " + str(len(freq)) + " samples")
+        plt.plot(freq,power)
+        # plt.xlabel('frequency [hz]')
         plt.ylabel('power')
-
+        #
         ax2 = plt.subplot(2, 1, 2)
         # plt.figure(figsize=(1, 5))
-        plt.title('Filtered data based on threshold value:', loc='left')
+        plt.title('Power spectrum: output based on filtered ' + filter_str + " values")
         plt.plot(filtered["F_Freq"], filtered["F_Power"])
         plt.ylabel("Power")
         plt.xlabel("Frequency[Hz]")
+        #
+        # ax3 = plt.subplot(3, 1, 3)
+
+        # # plt.figure(figsize=(1, 5))
+        # # ax3.margins(x=-0.25,y=-0.25)
+        # plt.title('Filtered data based on threshold parameter:', loc='left')
+        # plt.plot(freq[:np.sum(threshold)], power[:np.sum(threshold)])
+        # plt.ylabel("Power")
+        # plt.xlabel("Frequency[Hz]")
 
         plt.setp(ax1.get_xticklabels(), visible=True)
         plt.setp(ax2.get_xticklabels(), visible=True)
-
         plt.show()
+
+    def bandpassfilter(self,low_freq, hi_freq):
+        signal = self.resampled_signal
+        times = self.time_interval
+
+        # print(len(times), len(signal))
+        n = len(self.resampled_signal)
+        # time = np.linspace(times[0], times[-1], len(signal))
+        # plt.plot(times[:n],signal[:n])
+        # plt.show()
+
+        fs = n  # frequency space
+        lowcut = low_freq# lowest freq
+        highcut = hi_freq# highest freq
+        #
+        nyq = 0.5 * fs
+        low = lowcut / nyq
+        high = highcut / nyq
+        #
+        order = 2
+
+        b, a = scipy.signal.butter(order, [low, high], 'bandpass', analog=False)
+        filtered_signal = scipy.signal.filtfilt(b, a, signal, axis=0)
+
+        plt.title('Band pass filter:' + str(lowcut) + '-' + str(highcut)+ 'hz')
+        plt.ylabel('Ampltidue')
+        plt.xlabel('Time')
+        plt.plot(times, filtered_signal)
+        plt.show()
+
+    def lowpassfilter(self,cut_off_freq):
+
+        # filter parameters
+        duration = self.time_interval[-1] - self.time_interval[0]
+        Cutoff_freq = cut_off_freq #hz # anything lower than this will pass
+        Sampling_freq = 1/self.samping_rate
+        Signal = self.resampled_signal
+        Order = 2
+        Time = self.time_interval
+
+        number_of_samples = int(duration*Sampling_freq)
+        # print(number_of_samples)
+        time = np.linspace(0,duration,number_of_samples)
+        # print(len(time))
+        # print(time)
+
+        Normalized_cutoff_freq = 2 * Cutoff_freq / Sampling_freq
+        Numerator_coeffs, Denominator_coeffs = scipy.signal.butter(Order, Normalized_cutoff_freq)
+        Filtered_signal = scipy.signal.filtfilt(Numerator_coeffs, Denominator_coeffs, Signal)
+        print(len(Filtered_signal))
+
+        # plt.plot(Time[10000:],Signal[10000:], 'b-', label='signal')
+        # plt.plot(Time[10000:],Filtered_signal[10000:], 'g-', linewidth=2, label='filtered signal')
+        plt.title('Low pass filter with' + " cutoff freq @" + str(Cutoff_freq) + "hz")
+        plt.ylabel('Amplitude')
+        plt.xlabel('Time[seconds of week]')
+        plt.plot(Time, Signal, 'b-', label='signal')
+        plt.plot(Time, Filtered_signal, 'g-', linewidth=2, label='filtered signal')
+        plt.legend()
+        plt.show()
+
+
+
+    def fft_example(self):
+        # generate signal
+        n = 1024
+        s = int(n / 2)
+        t = np.arange(n)
+        f = 1 / 43
+        A = 1
+        # rotation =
+        eta = sin(2 * pi * f * t) # Create a sinusoid
+        print(eta)
+        plt.plot(eta)
+        plt.title('Sine Wave')
+        plt.ylabel('Water Level in [m] →')
+        plt.xlabel('Point number →')
+        plt.show()
+
+        #FFT
+        Fk = np.fft.fft(eta)/n # fft values
+        nu = np.fft.fftfreq(n,1) # natural frequencies
+        self.fft_values_example = Fk # 1024 samples
+        self.natural_frequencies_example = nu # natural frequency based on all data
+
+        plt.plot(nu[0:s], np.absolute(Fk[0:s]) ** 2)  # Plot the power spectrum
+        plt.title('Power Spectrum')
+        plt.ylabel('Power')
+        plt.xlabel('Frequency')
+        plt.xlim(0, 0.1)
+        plt.show()
+
+        # real data
+        N = int(len(self.ellipsoid_height_list))
+        S = int(N / 2)
+        FK = np.fft.fft(self.ellipsoid_height_list)
+        NU = np.fft.fftfreq(N, 0.005)
+
+        plt.plot(NU[0:S], np.absolute(FK[0:S]) ** 2)  # Plot the power spectrum
+        plt.title('Power Spectrum')
+        plt.ylabel('Power')
+        plt.xlabel('Frequency')
+        plt.xlim(0, 0.1)
+        plt.show()
+
+        #filter parameters
+
+        Cutoff_freq = 0.002
+        Sampling_freq = 1
+        Signal = eta
+        Order = 2
+
+        Normalized_cutoff_freq = 2 * Cutoff_freq / Sampling_freq
+        Numerator_coeffs, Denominator_coeffs = scipy.signal.butter(Order, Normalized_cutoff_freq)
+        Filtered_signal = scipy.signal.filtfilt(Numerator_coeffs, Denominator_coeffs, Signal)
+        plt.plot(Signal, 'b-', label='signal')
+        plt.plot(Filtered_signal, 'g-', linewidth=2, label='filtered signal')
+        plt.legend()
+        plt.show()
+
+
+
 
 
 
@@ -403,42 +580,117 @@ class Sbet:
 
          #interpolation of dataset based on time interval and sample rate
         resampled_amplitude = np.interp(time_interval,time,amplitude)
+        #self.resampled_signal = resampled_amplitude
 
         # Frequency domain representation
-        fourierTransform = np.fft.fft(resampled_amplitude) / len(resampled_amplitude)  # fft of the signal
+        fourierTransform = np.fft.fft(resampled_amplitude) / len(resampled_amplitude) # fft of the signal
         freq = np.fft.fftfreq(len(resampled_amplitude),sr) # the natural frequencies
         #fourierTransform = fourierTransform[range(int(len(interp_data) / 2))]  # Exclude sampling frequency
+
         n = int(np.floor(len(resampled_amplitude)/2))
-        self.fft_frequencies = freq[0:n]  # assigning frequencies to global variable/as an attribute
-        self.fft_values = abs(fourierTransform[0:n])  # assigning fft values to global variable
-        self.time_interval = time_interval[0:n]
+        print(len(resampled_amplitude))
+        print(n)
+        self.natural_frequencies = freq[0:n]  # assigning frequencies to global variable/as an attribute
+        self.fft_values = abs(fourierTransform[0:n])  # assigning fft values to global variable (signal)
+        #self.time_interval = time_interval[0:n]
+
         # plot resampled data
 
-        # print("Drawing Motion Data")
+        # puting data into data frame
+        power = abs(fourierTransform[0:n])**2
+        freq = freq[0:n] # setting up frequency values
+        np_data = np.array([freq, power])
+        np_data_trans = np.transpose(np_data)
+        raw_data = pd.DataFrame(data=np_data_trans, columns=["Freq", "Power"])
 
-        ax1 = plt.subplot(2, 1, 1)
+        # identify max and min values in data
+        max_value = raw_data.max()
+        min_value = raw_data.min()
+        #
+        print("Max values:\n" + str(max_value), "\nMin values:\n" + str(min_value))
+
+        # ax1 = plt.subplot(3, 1, 1)
         # plt.figure(figsize=(5, 20))
-        plt.title("Plotted sbet data (resampled with a " + str(sr) +"secs sampling rate)", loc='left')
+        plt.title("Plotted sbet data (resampled with @ a " + str(sr) +"secs sampling rate)", loc='left')
         plt.plot(time_interval, resampled_amplitude)
         plt.ylabel("Ellipsoidal height [m]")
         plt.xlabel("Time[seconds of week]")
+        plt.show()
 
-        ax2 = plt.subplot(2, 1, 2)
+        ax1 = plt.subplot(2, 1, 1)
         # plt.figure(figsize=(1, 5))
-        plt.title('Power spectrum:' + str(sr) + 'secs sampling rate',loc='left')
-        plt.plot(freq[:n], np.abs(fourierTransform[:n]) ** 2)
+        plt.title('Power spectrum:' + str(sr) + 'secs sampling rate')
+        plt.plot(freq,power)
         plt.ylabel("Power")
         plt.xlabel("Frequency[Hz]")
+
+        ax2 = plt.subplot(2, 1, 2)
+        plt.title("Zoomed in", loc='left')
+        plt.plot(freq, power)
+        plt.ylabel("Power")
+        plt.xlabel("Frequency[Hz]")
+        # plt.ylim(0.1)
+        plt.xlim(0, 0.001)
 
 
         plt.setp(ax1.get_xticklabels(), visible=True)
         plt.setp(ax2.get_xticklabels(), visible=True)
-
+        #plt.setp(ax3.get_xticklabels(), visible=True)
         plt.show()
+
+    def low_pass_filter(self):
+        # order = 5
+        # sampling_freq = 30
+        # cutoff_freq = 2
+        # sampling_duration = 5
+        # number_of_samples = sampling_freq * sampling_duration
+        #
+        # time = np.linspace(0, sampling_duration, number_of_samples, endpoint=False)
+        # signal = np.sin(2 * np.pi * time) + 0.5 * np.cos(6 * 2 * np.pi * time) + 1.5 * np.sin(9 * 2 * np.pi * time)
+        # normalized_cutoff_freq = 2 * cutoff_freq / sampling_freq
+        # numerator_coeffs, denominator_coeffs = scipy.signal.butter(order, normalized_cutoff_freq)
+        # filtered_signal = scipy.signal.lfilter(numerator_coeffs, denominator_coeffs, signal)
+        # plt.plot(time, signal, 'b-', label='signal')
+        # plt.plot(time, filtered_signal, 'g-', linewidth=2, label='filtered signal')
+        # plt.legend()
+        # plt.show()
+
+        # #real data
+        # Order = 2
+        # Sampling_freq = 10
+        # Cutoff_freq = 1
+        #
+
+        # self.natural_frequencies_example = nu
+        # Filter requirements.
+        T = 1800  # Sample Period
+        Sampling_freq = 1  # sample rate, Hz
+        Cutoff_freq =0.02 # desired cutoff frequency of the filter, Hz ,slightly higher than actual 1.2 Hz
+        # nyq = 0.5 * fs  # Nyquist Frequency
+        Order = 2  # sin wave can be approx represented as quadratic
+        n = int(T * Sampling_freq)  # total number of samples
+        #Time = self.time_interval[]
+        Signal = self.fft_values_example
+        print(Signal)
+
+        Normalized_cutoff_freq = 2 * Cutoff_freq / Sampling_freq
+        Numerator_coeffs, Denominator_coeffs = scipy.signal.butter(Order, Normalized_cutoff_freq)
+        Filtered_signal = scipy.signal.lfilter(Numerator_coeffs, Denominator_coeffs, Signal)
+        plt.plot(Signal, 'b-', label='signal')
+        #plt.plot(Filtered_signal, 'g-', linewidth=2, label='filtered signal')
+        plt.legend()
+        plt.show()
+
+
+
+
+
 
     def resample(self,sr):
         #sr refer to sampling rate. The sampling rate is entered by the user.
         #data set
+
+        self.samping_rate = sr
         time = np.array(self.time_list)
         magnitude = np.array(self.ellipsoid_height_list)
 
@@ -450,6 +702,8 @@ class Sbet:
 
         #interpolation of dataset based on time interval and sample rate
         interp_data = np.interp(time_interval,time,magnitude)
+        self.time_interval = time_interval
+        self.resampled_signal = interp_data
 
         len(interp_data)
 
